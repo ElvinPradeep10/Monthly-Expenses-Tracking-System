@@ -1,6 +1,6 @@
 // expenses.js
 
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = `${window.location.origin}/api`;
 
 document.addEventListener('DOMContentLoaded', () => {
   const token = localStorage.getItem('token');
