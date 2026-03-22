@@ -1,0 +1,44 @@
+name: Full Stack CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check backend entry file
+        run: |
+          if [ ! -f backend/server.js ]; then
+            echo "backend/server.js not found"
+            exit 1
+          fi
+
+  frontend-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check frontend files
+        run: |
+          if [ ! -d frontend ]; then
+            echo "frontend folder not found"
+            exit 1
+          fi
