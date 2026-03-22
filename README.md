@@ -42,25 +42,7 @@ Ensure you have the project files in your workspace.
 
 ```sql
 -- Create users table
-CREATE TABLE users (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Create expenses table
-CREATE TABLE expenses (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  amount NUMERIC NOT NULL,
-  description TEXT NOT NULL,
-  category TEXT NOT NULL,
-  date DATE NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-```
+y
 
 4. Get your Supabase credentials:
    - Go to **Project Settings** → **API**
@@ -104,6 +86,22 @@ node backend/server.js
 The application will be available at:
 ```
 http://localhost:3000
+```
+
+### 6. Vercel Deployment
+
+1. Create a Vercel account and connect your repository.
+2. Add environment variables in Vercel Dashboard:
+   - SUPABASE_URL
+   - SUPABASE_ANON_KEY (if needed)
+   - SUPABASE_SERVICE_ROLE_KEY (recommended)
+   - JWT_SECRET
+3. `vercel.json` routes front-end and `/api` serverless endpoints.
+4. Push to `main` and deploy.
+
+Access app at:
+```
+https://<your-vercel-project>.vercel.app
 ```
 
 ### 6. Access the App
