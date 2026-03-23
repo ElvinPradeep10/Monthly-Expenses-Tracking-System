@@ -1,5 +1,22 @@
+const jwt = require('jsonwebtoken');
 const supabase = require('../config/supabaseClient');
 const { applyCors } = require('../utils/auth');
+
+function getUserId(req) {
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded?.id) return decoded.id;
+    } catch (err) {
+      // Invalid token, ignore and continue
+    }
+  }
+  if (req.body?.user_id) return req.body.user_id;
+  if (process.env.DEFAULT_USER_ID) return process.env.DEFAULT_USER_ID;
+  return null;
+}
 
 module.exports = async (req, res) => {
   try {
@@ -20,13 +37,21 @@ module.exports = async (req, res) => {
     const numericAmount = parseFloat(amount);
     if (Number.isNaN(numericAmount) || numericAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
 
-    const { data, error } = await supabase.from('expenses').update({ amount: numericAmount, description, category, date, updated_at: new Date() }).eq('id', id).select().single();
+    const userId = getUserId(req);
+    let updateQuery = supabase.from('expenses').update({ amount: numericAmount, description, category, date, updated_at: new Date() }).eq('id', id);
+    if (userId) updateQuery = updateQuery.eq('user_id', userId);
+
+    const { data, error } = await updateQuery.select().single();
     if (error) return res.status(500).json({ message: 'Error updating expense', error });
     return res.status(200).json(data);
   }
 
   if (req.method === 'DELETE') {
-    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    const userId = getUserId(req);
+    let deleteQuery = supabase.from('expenses').delete().eq('id', id);
+    if (userId) deleteQuery = deleteQuery.eq('user_id', userId);
+
+    const { error } = await deleteQuery;
     if (error) return res.status(500).json({ message: 'Error deleting expense', error });
     return res.status(200).json({ message: 'Expense deleted' });
   }

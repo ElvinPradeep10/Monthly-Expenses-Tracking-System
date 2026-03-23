@@ -1,5 +1,22 @@
+const jwt = require('jsonwebtoken');
 const supabase = require('../config/supabaseClient');
 const { applyCors } = require('../utils/auth');
+
+function getUserId(req) {
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded?.id) return decoded.id;
+    } catch (err) {
+      // Invalid token means no user id from auth
+    }
+  }
+  if (req.body?.user_id) return req.body.user_id;
+  if (process.env.DEFAULT_USER_ID) return process.env.DEFAULT_USER_ID;
+  return null;
+}
 
 function parseMonthDateRange(monthString) {
   const [year, month] = monthString.split('-').map(Number);
@@ -25,8 +42,10 @@ module.exports = async (req, res) => {
     // Vercel provides parsed query params in req.query; using that avoids URL parsing issues.
     const month = req.query?.month || null;
     const category = req.query?.category || null;
+    const userId = getUserId(req);
 
     let query = supabase.from('expenses').select('*').order('date', { ascending: false });
+    if (userId) query = query.eq('user_id', userId);
 
     if (month) {
       const range = parseMonthDateRange(month);
@@ -50,8 +69,21 @@ module.exports = async (req, res) => {
     const numericAmount = parseFloat(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
 
-    const { data, error } = await supabase.from('expenses').insert([{ amount: numericAmount, description, category, date }]).select().single();
-    if (error) return res.status(500).json({ message: 'Error adding expense', error });
+    let userId = getUserId(req);
+    if (!userId) {
+      const { data: existingExpense, error: existingError } = await supabase.from('expenses').select('user_id').limit(1).maybeSingle();
+      if (!existingError && existingExpense?.user_id) {
+        userId = existingExpense.user_id;
+      }
+    }
+
+    const expensePayload = { amount: numericAmount, description, category, date };
+    if (userId) expensePayload.user_id = userId;
+
+    const { data, error } = await supabase.from('expenses').insert([expensePayload]).select().single();
+    if (error) {
+      return res.status(500).json({ message: 'Error adding expense', reason: error.message || error, error });
+    }
     return res.status(201).json(data);
   }
 
@@ -67,13 +99,21 @@ module.exports = async (req, res) => {
       const numericAmount = parseFloat(amount);
       if (isNaN(numericAmount) || numericAmount <= 0) return res.status(400).json({ message: 'Amount must be a positive number' });
 
-      const { data, error } = await supabase.from('expenses').update({ amount: numericAmount, description, category, date, updated_at: new Date() }).eq('id', id).select().single();
+      const userId = getUserId(req);
+      let query = supabase.from('expenses').update({ amount: numericAmount, description, category, date, updated_at: new Date() }).eq('id', id);
+      if (userId) query = query.eq('user_id', userId);
+
+      const { data, error } = await query.select().single();
       if (error) return res.status(500).json({ message: 'Error updating expense', error });
       return res.json(data);
     }
 
     if (req.method === 'DELETE') {
-      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      const userId = getUserId(req);
+      let query = supabase.from('expenses').delete().eq('id', id);
+      if (userId) query = query.eq('user_id', userId);
+
+      const { error } = await query;
       if (error) return res.status(500).json({ message: 'Error deleting expense', error });
       return res.json({ message: 'Expense deleted' });
     }

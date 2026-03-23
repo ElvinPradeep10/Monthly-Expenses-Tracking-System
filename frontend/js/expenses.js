@@ -2,6 +2,11 @@
 
 const API_BASE = '/api';
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadExpenses();
   populateMonthFilter();
@@ -26,7 +31,13 @@ async function loadExpenses() {
   if (params.toString()) url += '?' + params.toString();
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      }
+    });
 
     if (response.ok) {
       const expenses = await response.json();
@@ -107,7 +118,8 @@ async function handleAddExpense(e) {
     const response = await fetch(`${API_BASE}/expenses`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       },
       body: JSON.stringify({ 
         amount: parseFloat(amount), 
@@ -129,7 +141,8 @@ async function handleAddExpense(e) {
       } catch (e) {
         error = { message: 'Server error. Please try again.' };
       }
-      alert(error.message || 'Failed to add expense');
+      const reason = error.reason || error.error?.message || '';
+      alert(`${error.message || 'Failed to add expense'}${reason ? ' - ' + reason : ''}`);
     }
   } catch (error) {
     console.error('Add expense error:', error);
@@ -142,7 +155,11 @@ async function deleteExpense(id) {
 
   try {
     const response = await fetch(`${API_BASE}/expenses/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      }
     });
 
     if (response.ok) {
@@ -155,7 +172,8 @@ async function deleteExpense(id) {
       } catch (e) {
         error = { message: 'Server error. Please try again.' };
       }
-      alert(error.message || 'Failed to delete expense');
+      const reason = error.reason || error.error?.message || '';
+      alert(`${error.message || 'Failed to delete expense'}${reason ? ' - ' + reason : ''}`);
     }
   } catch (error) {
     console.error('Delete expense error:', error);
@@ -200,7 +218,8 @@ async function updateExpense(id, data) {
     const response = await fetch(`${API_BASE}/expenses/${id}`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
       },
       body: JSON.stringify(data)
     });
@@ -215,7 +234,8 @@ async function updateExpense(id, data) {
       } catch (e) {
         error = { message: 'Server error. Please try again.' };
       }
-      alert(error.message || 'Failed to update expense');
+      const reason = error.reason || error.error?.message || '';
+      alert(`${error.message || 'Failed to update expense'}${reason ? ' - ' + reason : ''}`);
     }
   } catch (error) {
     console.error('Update expense error:', error);
