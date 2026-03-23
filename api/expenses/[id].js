@@ -2,11 +2,12 @@ const supabase = require('../../config/supabaseClient');
 const { applyCors } = require('../../utils/auth');
 
 module.exports = async (req, res) => {
-  applyCors(res);
+  try {
+    applyCors(res);
 
-  if (!supabase) {
-    return res.status(500).json({ message: 'Supabase client not configured. Please set SUPABASE_URL and key in environment variables.' });
-  }
+    if (!supabase) {
+      return res.status(500).json({ message: 'Supabase client not configured. Please set SUPABASE_URL and key in environment variables.' });
+    }
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -31,4 +32,8 @@ module.exports = async (req, res) => {
   }
 
   return res.status(405).json({ message: 'Method not allowed' });
+  } catch (error) {
+    console.error('Unexpected error in /api/expenses/[id]:', error);
+    return res.status(500).json({ message: 'Unexpected server error', error: error.message || String(error) });
+  }
 };

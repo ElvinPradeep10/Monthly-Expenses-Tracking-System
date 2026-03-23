@@ -10,26 +10,30 @@ function parseMonthDateRange(monthString) {
 }
 
 module.exports = async (req, res) => {
-  applyCors(res);
+  try {
+    applyCors(res);
 
-  if (!supabase) {
-    return res.status(500).json({ message: 'Supabase client not configured. Please set SUPABASE_URL and key in environment variables.' });
-  }
+    if (!supabase) {
+      return res.status(500).json({ message: 'Supabase client not configured. Please set SUPABASE_URL and key in environment variables.' });
+    }
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
 
   if (req.method === 'GET') {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const month = url.searchParams.get('month');
-    const category = url.searchParams.get('category');
+    // Vercel provides parsed query params in req.query; using that avoids URL parsing issues.
+    const month = req.query?.month || null;
+    const category = req.query?.category || null;
 
     let query = supabase.from('expenses').select('*').order('date', { ascending: false });
 
     if (month) {
       const range = parseMonthDateRange(month);
-      if (range) query = query.gte('date', range.start).lte('date', range.end);
+      if (!range) {
+        return res.status(400).json({ message: 'Invalid month format. Use YYYY-MM.' });
+      }
+      query = query.gte('date', range.start).lte('date', range.end);
     }
 
     if (category) query = query.eq('category', category);
@@ -76,4 +80,8 @@ module.exports = async (req, res) => {
   }
 
   return res.status(404).json({ message: 'Route not found' });
+  } catch (error) {
+    console.error('Unexpected error in /api/expenses:', error);
+    return res.status(500).json({ message: 'Unexpected server error', error: error.message || String(error) });
+  }
 };
