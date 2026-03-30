@@ -24,8 +24,8 @@ jobs:
 
       - name: Check backend entry file
         run: |
-          if [ ! -f backend/server.js ]; then
-            echo "backend/server.js not found"
+          if [ ! -f api/index.js ]; then
+            echo "api/index.js not found"
             exit 1
           fi
 
